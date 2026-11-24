@@ -1,0 +1,62 @@
+--- a/svc/ubo/lib/env.ts
++++ b/svc/ubo/lib/env.ts
+@@ -1,5 +1,16 @@
++const readEnv = (name: string): string | undefined => {
++    const g = globalThis as {
++        Deno?: { env: { get(name: string): string | undefined } };
++        process?: { env: Record<string, string | undefined> };
++    };
++    if (g.Deno) {
++        return g.Deno.env.get(name);
++    }
++    return g.process?.env[name];
++};
++
+ const strictGet = (name: string) => {
+-    const val = Deno.env.get(name);
++    const val = readEnv(name);
+     if (typeof val !== 'string') {
+         throw new Error(`env ${name} is missing`);
+     }
+@@ -8,14 +19,14 @@
+ };
+ 
+ const getBool = (name: string) => {
+-    const val = Deno.env.get(name) || '';
++    const val = readEnv(name) || '';
+     return ['true', 'yes', 'on', 't', 'y', '1'].includes(
+         val.toLowerCase(),
+     );
+ };
+ 
+ const getUrl = (name: string) => {
+-    const val = Deno.env.get(name);
++    const val = readEnv(name);
+     if (val) {
+         return new URL(val);
+     }
+@@ -25,5 +36,5 @@
+     baseURL: strictGet('UBO_PROXY_BASE_URL'),
+     useHeliumAssets: !getBool('UBO_USE_ORIGINAL_UBLOCK_ASSETS'),
+     customAssetsUrl: getUrl('UBO_ASSETS_JSON_URL'),
+-    customAssetsChecksum: Deno.env.get('UBO_ASSETS_JSON_SHA256'),
++    customAssetsChecksum: readEnv('UBO_ASSETS_JSON_SHA256'),
+ };
+--- a/svc/ubo/lib/ublock.ts
++++ b/svc/ubo/lib/ublock.ts
+@@ -4,7 +4,7 @@
+ import * as AssetsInfo from './assets-info.ts';
+ import { env } from './env.ts';
+ 
+-import * as Path from '@std/path/posix';
++import * as Path from 'node:path/posix';
+ 
+ type Asset = {
+     content: 'internal' | 'filters';
+--- a/svc/ubo/lib/resource.ts
++++ b/svc/ubo/lib/resource.ts
+@@ -1,4 +1,3 @@
+-/// <reference types="@types/node" />
+ import z from 'node:zlib';
+ 
+ export function compress(s: string) {

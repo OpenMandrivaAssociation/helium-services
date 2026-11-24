@@ -1,0 +1,38 @@
+[Unit]
+Description=Helium uBlock Origin asset proxy
+Documentation=https://github.com/imputnet/helium-services
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=helium-services
+Group=helium-services
+Environment=UBO_LISTEN=127.0.0.1:8092
+Environment=HOME=/var/lib/helium-services
+Environment=XDG_CACHE_HOME=/var/lib/helium-services/cache
+EnvironmentFile=/etc/helium-services/helium-services.env
+StateDirectory=helium-services
+StateDirectoryMode=0750
+WorkingDirectory=/usr/lib/helium-services/ubo
+ExecStartPre=/usr/bin/mkdir -p /var/lib/helium-services/cache
+ExecStart=/usr/bin/bun /usr/lib/helium-services/ubo/serve.ts
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectClock=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target

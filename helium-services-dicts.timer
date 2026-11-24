@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Helium spellcheck dictionaries daily
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1d
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

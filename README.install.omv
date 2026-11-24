@@ -1,0 +1,98 @@
+Helium services is the self-hosted side of the Helium browser: extension
+downloads, component updates, uBlock Origin filter lists, the bangs list,
+and spellcheck dictionaries.
+
+The package starts the local programs. It does not publish them. Finish
+the steps below before pointing a browser at this machine.
+
+What is not included
+--------------------
+components (the separate Omaha, crlset, and translation server), minipush,
+minidumpster, sparkler, and release-collector are other upstream programs.
+Browser self-update, web push, and crash reports are not served here.
+Docker, a private nginx, and acme.sh are not used. TLS is yours: put a
+certificate on the vhost, or terminate TLS on another proxy in front of it.
+
+1. Pick the web server
+----------------------
+Installing helium-services also installs the nginx integration. Install
+helium-services-apache as well when this machine uses Apache. Enable one
+vhost, not both.
+
+2. Name the host
+----------------
+Edit /etc/helium-services/helium-services.env. Set SERVICES_HOSTNAME,
+PROXY_BASE_URL, and UBO_PROXY_BASE_URL to the same host. PROXY_BASE_URL
+ends in /ext/ and UBO_PROXY_BASE_URL ends in /ubo/. An empty HMAC_SECRET
+is filled in on first install. Leave LISTEN and UBO_LISTEN on 127.0.0.1
+unless you also edit the vhost.
+
+Restart the backends after saving the file:
+
+  systemctl restart helium-services-extension-proxy helium-services-ubo
+
+3. Nginx
+--------
+Edit server_name in /etc/nginx/sites-available/helium-services.conf, then:
+
+  ln -s ../sites-available/helium-services.conf \
+      /etc/nginx/sites-enabled/helium-services.conf
+  nginx -t && systemctl reload nginx
+
+The default site is left alone. This file answers only its server_name.
+
+4. Apache
+---------
+Edit ServerName in /etc/httpd/conf/webapps.available/helium-services.conf.
+If this is the only VirtualHost on port 80, Apache treats it as the
+default site, so add another default vhost first when this machine serves
+other names. Then:
+
+  ln -s ../webapps.available/helium-services.conf \
+      /etc/httpd/conf/webapps.d/helium-services.conf
+  apachectl configtest && systemctl reload httpd
+
+5. Point Helium at it
+---------------------
+In Helium, set helium.services.origin_override to the origin of the vhost
+you enabled, with no path. Example: https://services.example.com
+
+The master switch is helium.services.enabled. These switches select which
+paths that origin is used for:
+
+  helium.services.ext_proxy
+  helium.services.bangs
+  helium.services.spellcheck_files
+  helium.services.ublock_assets
+
+The browser then requests /ext/, /com, /bangs.json, /dict/, and /ubo/
+on that origin.
+
+6. Dictionaries and bangs
+-------------------------
+/bangs.json is shipped with the package. helium-services-bangs.timer
+replaces it from BANG_SOURCE about two minutes after boot, then hourly.
+/dict/ is empty until helium-services-dicts.timer has downloaded the
+pinned Chromium hunspell snapshot. That run needs outbound HTTPS. It
+starts on the same delay, then repeats daily. Spellcheck downloads fail
+until that first run succeeds.
+
+7. uBlock Origin assets
+-----------------------
+This snapshot still requests the uBlock Origin 1.76.4 assets file.
+Helium 0.22.3 ships uBlock Origin 1.77.0. To point the proxy at another
+assets.json, set both UBO_ASSETS_JSON_URL and UBO_ASSETS_JSON_SHA256.
+Do not set those together with UBO_USE_ORIGINAL_UBLOCK_ASSETS. Clients
+must send Accept-Encoding: br. A browser check:
+
+  curl -D- -o /dev/null -H 'Accept-Encoding: br' \
+      http://127.0.0.1:8092/assets.json
+
+The extension proxy answers:
+
+  curl -s http://127.0.0.1:8091/health
+
+Logs are in the journal:
+
+  journalctl -u helium-services-extension-proxy -u helium-services-ubo \
+      -u helium-services-bangs -u helium-services-dicts

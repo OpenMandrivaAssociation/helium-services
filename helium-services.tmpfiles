@@ -1,0 +1,7 @@
+d /var/lib/helium-services 0750 helium-services helium-services -
+d /var/lib/helium-services/cache 0750 helium-services helium-services -
+d /srv/www/helium-services 0755 helium-services helium-services -
+d /srv/www/helium-services/bangs 0755 helium-services helium-services -
+d /srv/www/helium-services/dict 0755 helium-services helium-services -
+d /srv/www/helium-services/htdocs 0755 root root -
+z /etc/helium-services/helium-services.env 0640 root helium-services - -

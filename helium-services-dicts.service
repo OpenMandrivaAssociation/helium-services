@@ -1,0 +1,30 @@
+[Unit]
+Description=Refresh Helium spellcheck dictionaries
+Documentation=https://github.com/imputnet/helium-services
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=helium-services
+Group=helium-services
+EnvironmentFile=/etc/helium-services/helium-services.env
+ExecStart=/usr/libexec/helium-services/refresh-dicts.sh
+TimeoutStartSec=15min
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/www/helium-services
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectClock=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+UMask=0022

@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the Helium bangs list hourly
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
