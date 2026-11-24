@@ -170,6 +170,7 @@ find %{buildroot}%{_prefix}/lib/helium-services/ubo -type f -exec chmod 0644 {} 
 install -d %{buildroot}/srv/www/helium-services/bangs
 install -d %{buildroot}/srv/www/helium-services/dict
 install -d %{buildroot}/srv/www/helium-services/htdocs
+install -d %{buildroot}/var/lib/helium-services
 install -m 0644 svc/bangs/bangs.json \
 	%{buildroot}/srv/www/helium-services/bangs/bangs.json
 gzip -9 -c svc/bangs/bangs.json \
