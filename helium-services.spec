@@ -96,6 +96,11 @@ Summary:	Apache site for Helium services
 Group:		System/Servers
 Requires:	%{name} = %{EVRD}
 Requires:	apache
+# apache-base is the package that owns the default docroot. The extra
+# test installs every subpackage in one transaction, then splits the
+# known nginx/apache-base pair. It only notices this subpackage is on
+# the Apache side when apache-base is a direct dependency.
+Requires:	apache-base
 Requires:	apache-mod_alias
 Requires:	apache-mod_autoindex
 Requires:	apache-mod_headers
