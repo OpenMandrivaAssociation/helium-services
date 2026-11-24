@@ -1,0 +1,29 @@
+Chromium 158.0.8127.36 spellcheck dictionary converter.
+
+The .cc and .h files under chrome/ and third_party/ are copied from that
+Chromium revision:
+
+  chrome/tools/convert_dict/
+  third_party/hunspell/google/
+
+They write the .bdic files Helium's spellchecker downloads. stub/ supplies
+the small parts of //base and MD5 that those files include, using system
+ICU and libcrypto. hunspell_to_bdic.cc is the program the package runs.
+
+dic_reader.cc no longer logs a missing .dic_delta. The myspell packages
+do not ship one.
+
+The bdic version suffix published by helium-services-refresh-dicts.sh has
+to stay in step with GetVersionedFileName in
+
+  components/spellcheck/common/spellcheck_common.cc
+
+of the Chromium revision Helium is built from. Helium 0.22.3 uses
+158.0.8127.36.
+
+Rebuild the source archive after changing this directory:
+
+  tar -C convert-dict -cf - . | zstd -T0 -19 -o helium-services-bdic.tar.zst
+  abb store helium-services-bdic.tar.zst
+
+The license for the Chromium files is LICENSE.bsd.

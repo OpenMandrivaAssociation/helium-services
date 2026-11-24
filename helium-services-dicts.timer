@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh Helium spellcheck dictionaries daily
+Description=Publish Helium spellcheck dictionaries from system hunspell files
 
 [Timer]
 OnBootSec=2min

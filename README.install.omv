@@ -72,10 +72,16 @@ on that origin.
 -------------------------
 /bangs.json is shipped with the package. helium-services-bangs.timer
 replaces it from BANG_SOURCE about two minutes after boot, then hourly.
-/dict/ is empty until helium-services-dicts.timer has downloaded the
-pinned Chromium hunspell snapshot. That run needs outbound HTTPS. It
-starts on the same delay, then repeats daily. Spellcheck downloads fail
-until that first run succeeds.
+/dict/ is built from the hunspell dictionaries already installed for
+LibreOffice, in /usr/share/hunspell. Helium 0.22.3 still downloads
+Chromium .bdic names such as en-US-10-2.bdic, so the service converts
+the installed .aff and .dic files into that cache. It does not download
+or ship a second word list. Install myspell-en, myspell-de, and the
+other myspell language packages for the languages you want.
+helium-services-dicts.path rebuilds the cache when those files change.
+helium-services-dicts.timer also rebuilds it shortly after boot and
+then daily. A language is absent until its myspell package is installed
+and that refresh has run.
 
 7. uBlock Origin assets
 -----------------------

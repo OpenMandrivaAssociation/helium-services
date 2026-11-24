@@ -3,7 +3,8 @@
 # upstream release tags.
 #
 # Packaged stack: extension-proxy, the uBlock asset proxy, bangs.json,
-# and the dictionary refresh. components, minipush, minidumpster,
+# and spellcheck dictionaries converted from the system hunspell files.
+# components, minipush, minidumpster,
 # sparkler, and release-collector are separate upstream programs and
 # are not part of this package.
 #
@@ -18,14 +19,22 @@
 # the system crate registry. This package vendors crates and keeps the lock.
 #
 # cargo test is not run. The proxy tests talk to the network.
+#
+# Spellcheck does not download Chromium's hunspell snapshot. The refresh
+# reads myspell dictionaries from /usr/share/hunspell and writes the .bdic
+# names Helium 0.22.3 requests. The converter sources are Chromium
+# 158.0.8127.36 convert_dict plus a small compatibility layer. Recreate
+# the archive from convert-dict/ after editing that directory:
+#   tar -C convert-dict -cf - . | zstd -T0 -19 -o helium-services-bdic.tar.zst
+#   abb store helium-services-bdic.tar.zst
 
 %global commit 080ec153c03bcd142ceafa5d91d1eaa54eec8c73
 
 Name:		helium-services
 Version:	0.20261123
-Release:	1
+Release:	2
 Summary:	Self-hosted services for the Helium browser
-License:	AGPL-3.0-only
+License:	AGPL-3.0-only AND BSD-3-Clause
 Group:		System/Servers
 URL:		https://github.com/imputnet/helium-services
 Source0:	https://github.com/imputnet/helium-services/archive/%{commit}.tar.gz#/helium-services-%{version}.tar.gz
@@ -46,6 +55,8 @@ Source14:	helium-services-bangs.timer
 Source15:	helium-services-dicts.service
 Source16:	helium-services-dicts.timer
 Source17:	helium-services-index.html
+Source18:	helium-services-bdic.tar.zst
+Source19:	helium-services-dicts.path
 
 Patch0:		helium-services-ubo-bun.patch
 
@@ -54,15 +65,17 @@ BuildRequires:	clang
 BuildRequires:	cmake
 BuildRequires:	gzip
 BuildRequires:	make
+BuildRequires:	pkgconfig(icu-uc)
+BuildRequires:	pkgconfig(libcrypto)
 BuildRequires:	rust
 BuildRequires:	rust-packaging
 
 Requires:	bun
 Requires:	curl
 Requires:	gzip
-Requires:	tar
 Requires:	helium-services-webserver-integration = %{EVRD}
 Recommends:	helium-services-nginx = %{EVRD}
+Recommends:	myspell-en
 
 %description
 Helium services serves the browser's extension downloads, component
@@ -79,6 +92,12 @@ helium-services-apache as well to use Apache instead of, or next to, nginx.
 The uBlock proxy runs on bun. This snapshot still requests uBlock Origin
 1.76.4 assets; the environment file can point it at another assets.json.
 Crate licenses for the extension proxy are in LICENSES.dependencies.
+
+Spellcheck uses the myspell dictionaries in /usr/share/hunspell, the same
+files LibreOffice uses. The package converts them to the .bdic names
+Helium downloads. It does not ship or download a second word list.
+Installing myspell-en is recommended. Other languages appear when their
+myspell package is installed.
 
 %package nginx
 Summary:	Nginx site for Helium services
@@ -118,16 +137,25 @@ from webapps.d until an administrator links it.
 cd svc/extension-proxy
 /usr/bin/rpmuncompress -x %{SOURCE1}
 %cargo_prep -v vendor
+cd ../..
+mkdir convert-dict
+cd convert-dict
+/usr/bin/rpmuncompress -x %{SOURCE18}
 
 %build
 cd svc/extension-proxy
 export CARGO_NET_OFFLINE=true
 %{cargo_license} > LICENSES.dependencies
 %cargo_build -- --locked --offline
+cd ../..
+%set_build_flags
+bash convert-dict/compile.sh "$PWD/hunspell-to-bdic"
 
 %install
 install -D -m 0755 svc/extension-proxy/target/rpm/extension-proxy \
 	%{buildroot}%{_libexecdir}/helium-services/extension-proxy
+install -D -m 0755 hunspell-to-bdic \
+	%{buildroot}%{_libexecdir}/helium-services/hunspell-to-bdic
 install -D -m 0755 %{SOURCE9} \
 	%{buildroot}%{_libexecdir}/helium-services/refresh-bangs.sh
 install -D -m 0755 %{SOURCE10} \
@@ -159,6 +187,7 @@ install -D -m 0644 %{SOURCE13} %{buildroot}%{_unitdir}/helium-services-bangs.ser
 install -D -m 0644 %{SOURCE14} %{buildroot}%{_unitdir}/helium-services-bangs.timer
 install -D -m 0644 %{SOURCE15} %{buildroot}%{_unitdir}/helium-services-dicts.service
 install -D -m 0644 %{SOURCE16} %{buildroot}%{_unitdir}/helium-services-dicts.timer
+install -D -m 0644 %{SOURCE19} %{buildroot}%{_unitdir}/helium-services-dicts.path
 
 install -D -m 0644 %{SOURCE7} \
 	%{buildroot}%{_sysconfdir}/nginx/sites-available/helium-services.conf
@@ -177,6 +206,8 @@ systemctl enable --now helium-services-extension-proxy.service
 systemctl enable --now helium-services-ubo.service
 systemctl enable --now helium-services-bangs.timer
 systemctl enable --now helium-services-dicts.timer
+systemctl enable --now helium-services-dicts.path
+systemctl start --no-block helium-services-dicts.service
 if [ "$1" -gt 1 ]; then
 	systemctl try-restart helium-services-extension-proxy.service
 	systemctl try-restart helium-services-ubo.service
@@ -188,10 +219,11 @@ if [ "$1" = 0 ]; then
 	systemctl disable --now helium-services-ubo.service
 	systemctl disable --now helium-services-bangs.timer
 	systemctl disable --now helium-services-dicts.timer
+	systemctl disable --now helium-services-dicts.path
 fi
 
 %files
-%license LICENSE svc/extension-proxy/LICENSES.dependencies
+%license LICENSE svc/extension-proxy/LICENSES.dependencies convert-dict/LICENSE.bsd
 %doc README.md README.install.omv
 %{_libexecdir}/helium-services
 %{_prefix}/lib/helium-services
@@ -201,9 +233,11 @@ fi
 %{_unitdir}/helium-services-bangs.timer
 %{_unitdir}/helium-services-dicts.service
 %{_unitdir}/helium-services-dicts.timer
+%{_unitdir}/helium-services-dicts.path
 %{_sysusersdir}/helium-services.conf
 %{_tmpfilesdir}/helium-services.conf
 %dir %attr(0750,root,helium-services) %{_sysconfdir}/helium-services
+%dir %attr(0750,helium-services,helium-services) /var/lib/helium-services
 %config(noreplace) %attr(0640,root,helium-services) %verify(not md5 size mtime) %{_sysconfdir}/helium-services/helium-services.env
 %dir %attr(0755,helium-services,helium-services) /srv/www/helium-services
 %dir %attr(0755,helium-services,helium-services) /srv/www/helium-services/bangs

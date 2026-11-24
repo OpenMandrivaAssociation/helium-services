@@ -1,0 +1,9 @@
+[Unit]
+Description=Publish Helium spellcheck dictionaries when system hunspell files change
+
+[Path]
+PathChanged=/usr/share/hunspell
+Unit=helium-services-dicts.service
+
+[Install]
+WantedBy=multi-user.target
